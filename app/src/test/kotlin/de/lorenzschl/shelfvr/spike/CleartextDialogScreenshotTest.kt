@@ -1,6 +1,7 @@
 package de.lorenzschl.shelfvr.spike
 
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
+import com.github.takahirom.roborazzi.ExperimentalRoborazziApi
 import com.github.takahirom.roborazzi.captureScreenRoboImage
 import de.lorenzschl.shelfvr.core.designsystem.ShelfVrTheme
 import org.junit.Rule
@@ -16,6 +17,7 @@ class CleartextDialogScreenshotTest {
     @get:Rule
     val compose = createComposeRule()
 
+    @OptIn(ExperimentalRoborazziApi::class)
     @Test
     fun warnhinweis() {
         compose.setContent {
