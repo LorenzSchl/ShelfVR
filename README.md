@@ -12,7 +12,7 @@ für die Spikes S-1 bis S-3. Details zu Zielen, Architektur und Planung: [`PROJE
 | | Minimum | Empfohlen |
 |---|---|---|
 | Brille | Meta Quest 2 | Quest 3/3S |
-| Horizon OS | noch offen (wird mit Spike S-1 festgelegt) | |
+| Horizon OS | getestet mit 2.9 (Quest 2); Mindestversion wird vor dem Release festgelegt | |
 | Audiobookshelf | 2.26 (JWT-Auth) | ≥ 2.36 (Fix für CVE-2026-73085) |
 
 Hinweis: Je nach Server-Konfiguration (`REFRESH_TOKEN_EXPIRY`) ist nach längerer Nichtnutzung
