@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - uses: actions/setup-java@v6.1.0
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: gradle/actions/setup-gradle@v6.4.0
+
+      # Integrationstests gegen ABS überspringen sich hier selbst (kein .env.test).
+      - name: Build, Unit-Tests, Screenshot-Tests, Lint
+        run: ./gradlew assembleDebug testDebugUnitTest verifyRoborazziDebug lintDebug --continue
+
+      - name: Debug-APK hochladen
+        if: success()
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: shelfvr-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
+
+      - name: Testberichte und Screenshot-Diffs hochladen
+        if: failure()
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: reports
+          path: |
+            **/build/reports/
+            **/build/outputs/roborazzi/
+          retention-days: 14
