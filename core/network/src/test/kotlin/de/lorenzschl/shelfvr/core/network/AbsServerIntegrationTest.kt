@@ -30,7 +30,8 @@ class AbsServerIntegrationTest {
     fun setUp() {
         assumeTrue("ABS-Testserver nicht konfiguriert (.env.test fehlt)", env("ABS_URL_LOCAL") != null)
         tokenStore = InMemoryTokenStore()
-        client = AbsClientFactory.createHttpClient(tokenStore)
+        // Der lokale Testserver läuft über HTTP: Opt-in wie in der App.
+        client = AbsClientFactory.createHttpClient(tokenStore, InMemoryCleartextPolicy().apply { allow(serverUrl.origin) })
         api = AbsClientFactory.createApi(serverUrl, client)
     }
 

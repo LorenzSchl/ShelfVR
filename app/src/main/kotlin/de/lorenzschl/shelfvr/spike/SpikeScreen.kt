@@ -12,6 +12,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -41,6 +42,8 @@ interface SpikeActions {
     fun onUsernameChange(value: String)
     fun onPasswordChange(value: String)
     fun login()
+    fun confirmCleartext()
+    fun dismissCleartext()
     fun playItem(id: String)
     fun closeSession()
 }
@@ -57,6 +60,7 @@ fun SpikeScreen(
     actions: SpikeActions,
     modifier: Modifier = Modifier,
 ) {
+    s3.cleartextConfirmation?.let { origin -> CleartextDialog(origin, actions) }
     Surface(modifier = modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
@@ -156,6 +160,24 @@ fun SpikeScreen(
             }
         }
     }
+}
+
+/** Warnhinweis vor unverschlüsseltem HTTP (§3.2). Ohne Bestätigung wird nicht verbunden. */
+@Composable
+internal fun CleartextDialog(origin: String, actions: SpikeActions) {
+    AlertDialog(
+        onDismissRequest = actions::dismissCleartext,
+        title = { Text("Unverschlüsselte Verbindung") },
+        text = {
+            Text(
+                "$origin verwendet HTTP statt HTTPS. Passwort, Zugangsdaten und Hörbücher werden " +
+                    "unverschlüsselt übertragen und können im Netzwerk mitgelesen werden. " +
+                    "Nur im eigenen Heimnetz verwenden.",
+            )
+        },
+        confirmButton = { ShelfButton("Trotzdem verbinden", actions::confirmCleartext) },
+        dismissButton = { ShelfOutlinedButton("Abbrechen", actions::dismissCleartext) },
+    )
 }
 
 @Composable

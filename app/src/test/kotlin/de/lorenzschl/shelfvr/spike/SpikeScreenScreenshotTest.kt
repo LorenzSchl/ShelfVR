@@ -45,7 +45,7 @@ class SpikeScreenScreenshotTest {
         compose.onRoot().captureRoboImage()
     }
 
-    private object NoActions : SpikeActions {
+    internal object NoActions : SpikeActions {
         override fun playTestTone() = Unit
         override fun stop() = Unit
         override fun requestNotifications() = Unit
@@ -57,6 +57,8 @@ class SpikeScreenScreenshotTest {
         override fun onUsernameChange(value: String) = Unit
         override fun onPasswordChange(value: String) = Unit
         override fun login() = Unit
+        override fun confirmCleartext() = Unit
+        override fun dismissCleartext() = Unit
         override fun playItem(id: String) = Unit
         override fun closeSession() = Unit
     }

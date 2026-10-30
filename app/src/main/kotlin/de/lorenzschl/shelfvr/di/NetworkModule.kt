@@ -5,6 +5,8 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import de.lorenzschl.shelfvr.core.network.AbsClientFactory
+import de.lorenzschl.shelfvr.core.network.CleartextPolicy
+import de.lorenzschl.shelfvr.core.network.InMemoryCleartextPolicy
 import de.lorenzschl.shelfvr.core.network.InMemoryTokenStore
 import de.lorenzschl.shelfvr.core.network.TokenStore
 import okhttp3.OkHttpClient
@@ -20,7 +22,13 @@ object NetworkModule {
     @Singleton
     fun tokenStore(): TokenStore = InMemoryTokenStore()
 
+    // HTTP-Zustimmungen pro Server (§3.2); InMemory nur bis zur Persistenz (#5).
     @Provides
     @Singleton
-    fun httpClient(tokenStore: TokenStore): OkHttpClient = AbsClientFactory.createHttpClient(tokenStore)
+    fun cleartextPolicy(): CleartextPolicy = InMemoryCleartextPolicy()
+
+    @Provides
+    @Singleton
+    fun httpClient(tokenStore: TokenStore, cleartextPolicy: CleartextPolicy): OkHttpClient =
+        AbsClientFactory.createHttpClient(tokenStore, cleartextPolicy)
 }

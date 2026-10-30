@@ -137,3 +137,21 @@ Die Designsprache passt erstmal so!
 - **Ergebnis:**
 - is mir egal.
 - ci ist grün, apk lief auf der quest :)
+
+## MT-06 · HTTP-Server im LAN per Opt-in (#4)
+
+- **Status:** offen
+- **Commit:** 6402b8b
+- **Voraussetzung:** Dein ABS ist im LAN auch per `http://<IP>:<Port>` erreichbar.
+- **Schritte:**
+  1. APK aus dem CI-Lauf dieses PRs installieren.
+  2. S-3: `http://<IP>:<Port>` eingeben, Benutzer und Passwort eintragen, „Anmelden“.
+  3. Der Warnhinweis „Unverschlüsselte Verbindung“ erscheint. Zuerst **Abbrechen**: Es darf keine
+     Anmeldung stattfinden.
+  4. Erneut „Anmelden“, diesmal **Trotzdem verbinden**: Die Anmeldung klappt, Bücher erscheinen.
+  5. Ein Buch abspielen. Der Stream läuft ebenfalls über HTTP und muss funktionieren.
+  6. Gegenprobe: Login mit der HTTPS-Domain erfolgt ohne Warnhinweis.
+  7. App beenden und neu starten: Der Warnhinweis erscheint wieder, weil die Zustimmung bis #5 nur
+     im Speicher liegt.
+- **Erwartet:** HTTP funktioniert nur nach Bestätigung, HTTPS unverändert.
+- **Ergebnis:**
