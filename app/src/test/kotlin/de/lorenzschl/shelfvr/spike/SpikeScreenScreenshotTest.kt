@@ -13,7 +13,7 @@ import org.robolectric.annotation.Config
 
 /** Breite = Default-Breite des Hauptfensters (1024 dp); Höhe so gewählt, dass alles sichtbar ist. */
 @RunWith(RobolectricTestRunner::class)
-@Config(qualifiers = "de-w1024dp-h1640dp-mdpi")
+@Config(qualifiers = "de-w1024dp-h2000dp-mdpi")
 class SpikeScreenScreenshotTest {
 
     @get:Rule
@@ -38,6 +38,14 @@ class SpikeScreenScreenshotTest {
                             S3Item("3", "Ohne Tags & Sonderzeichen", "Ünïcödé Äutor", 3),
                         ),
                     ),
+                    diagnostics = SpikeDiagnostics(
+                        notificationStatus = "aktiv, Berechtigung erteilt",
+                        entries = listOf(
+                            "21:34:01 Verbunden: com.android.systemui (v0, trusted=true, akzeptiert=true)",
+                            "21:34:05 Befehl PLAY_PAUSE von com.android.systemui",
+                            "21:34:05 playWhenReady=false (USER_REQUEST)",
+                        ),
+                    ),
                     actions = NoActions,
                 )
             }
@@ -59,5 +67,6 @@ class SpikeScreenScreenshotTest {
         override fun login() = Unit
         override fun playItem(id: String) = Unit
         override fun closeSession() = Unit
+        override fun clearDiagnostics() = Unit
     }
 }

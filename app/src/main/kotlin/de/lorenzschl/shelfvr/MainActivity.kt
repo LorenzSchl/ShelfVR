@@ -1,6 +1,7 @@
 package de.lorenzschl.shelfvr
 
 import android.Manifest
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -8,14 +9,19 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dagger.hilt.android.AndroidEntryPoint
 import de.lorenzschl.shelfvr.core.designsystem.ShelfVrTheme
 import de.lorenzschl.shelfvr.core.model.PlaybackSnapshot
 import de.lorenzschl.shelfvr.playback.PlaybackClient
+import de.lorenzschl.shelfvr.playback.PlaybackDiagnostics
 import de.lorenzschl.shelfvr.spike.S3ViewModel
 import de.lorenzschl.shelfvr.spike.SpikeActions
 import de.lorenzschl.shelfvr.spike.SpikeAudio
+import de.lorenzschl.shelfvr.spike.SpikeDiagnostics
 import de.lorenzschl.shelfvr.spike.SpikeScreen
 import de.lorenzschl.shelfvr.window.Windows
 import de.lorenzschl.shelfvr.window.togglePlayPause
@@ -27,7 +33,11 @@ class MainActivity : ComponentActivity() {
 
     private val playback by lazy { PlaybackClient(this) }
     private val s3: S3ViewModel by viewModels()
-    private val notificationPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) {}
+    private val notificationStatus = mutableStateOf("?")
+    private val notificationPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        PlaybackDiagnostics.log("Berechtigungsdialog beendet: erteilt=$granted")
+        refreshNotificationStatus()
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -35,7 +45,9 @@ class MainActivity : ComponentActivity() {
             ShelfVrTheme {
                 val snapshot by playback.snapshots.collectAsStateWithLifecycle(PlaybackSnapshot.Empty)
                 val s3State by s3.uiState.collectAsStateWithLifecycle()
-                SpikeScreen(windowSizeLabel(), snapshot, s3State, actions)
+                val diagnosticEntries by PlaybackDiagnostics.entries.collectAsStateWithLifecycle()
+                val diagnostics = SpikeDiagnostics(notificationStatus.value, diagnosticEntries)
+                SpikeScreen(windowSizeLabel(), snapshot, s3State, diagnostics, actions)
             }
         }
     }
@@ -43,6 +55,23 @@ class MainActivity : ComponentActivity() {
     override fun onStart() {
         super.onStart()
         playback.connect()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        refreshNotificationStatus()
+    }
+
+    private fun refreshNotificationStatus() {
+        val enabled = NotificationManagerCompat.from(this).areNotificationsEnabled()
+        val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val granted = ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) ==
+                PackageManager.PERMISSION_GRANTED
+            if (granted) "erteilt" else "nicht erteilt"
+        } else {
+            "nicht nötig (API ${Build.VERSION.SDK_INT})"
+        }
+        notificationStatus.value = "${if (enabled) "aktiv" else "deaktiviert"}, Berechtigung $permission"
     }
 
     override fun onStop() {
@@ -70,6 +99,7 @@ class MainActivity : ComponentActivity() {
 
         override fun requestNotifications() {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                PlaybackDiagnostics.log("Berechtigungsdialog angefordert")
                 notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
         }
@@ -97,5 +127,6 @@ class MainActivity : ComponentActivity() {
         override fun login() = s3.login()
         override fun playItem(id: String) = s3.play(id)
         override fun closeSession() = s3.closeSession()
+        override fun clearDiagnostics() = PlaybackDiagnostics.clear()
     }
 }

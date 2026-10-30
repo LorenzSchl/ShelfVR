@@ -18,6 +18,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -43,7 +44,11 @@ interface SpikeActions {
     fun login()
     fun playItem(id: String)
     fun closeSession()
+    fun clearDiagnostics()
 }
+
+/** Diagnose für #3: Berechtigungsstatus und Log aus dem PlaybackService (neueste zuerst). */
+data class SpikeDiagnostics(val notificationStatus: String, val entries: List<String>)
 
 /**
  * Bedienoberfläche für die Spikes S-1 bis S-3 (PROJECT_SPEC.md §12). Wegwerf-UI für Phase 0,
@@ -54,6 +59,7 @@ fun SpikeScreen(
     windowSize: String,
     snapshot: PlaybackSnapshot,
     s3: S3UiState,
+    diagnostics: SpikeDiagnostics,
     actions: SpikeActions,
     modifier: Modifier = Modifier,
 ) {
@@ -88,6 +94,21 @@ fun SpikeScreen(
                     ShelfButton("Testton abspielen", actions::playTestTone)
                     ShelfOutlinedButton("Stopp", actions::stop)
                     ShelfOutlinedButton("Benachrichtigungen erlauben", actions::requestNotifications)
+                }
+            }
+
+            SpikeSection(
+                title = "Diagnose · System-Mediensteuerung (#3)",
+                description = "Zeigt, welche Controller sich verbinden und welche Befehle ankommen. " +
+                    "Auch per adb logcat -s ShelfVR-Diag.",
+            ) {
+                Text("Benachrichtigungen: ${diagnostics.notificationStatus}")
+                ShelfOutlinedButton("Log leeren", actions::clearDiagnostics)
+                if (diagnostics.entries.isEmpty()) {
+                    Text("Noch keine Einträge.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                diagnostics.entries.asReversed().take(20).forEach { entry ->
+                    Text(entry, style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace)
                 }
             }
 

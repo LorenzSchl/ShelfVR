@@ -137,3 +137,29 @@ Die Designsprache passt erstmal so!
 - **Ergebnis:**
 - is mir egal.
 - ci ist grün, apk lief auf der quest :)
+
+## MT-05 · System-Mediensteuerung: Diagnose (#3)
+
+- **Status:** offen
+- **Commit:** dafd56b
+- **Ziel:** Herausfinden, warum die Buttons im System-Pop-up nichts bewirken, und ob der
+  `MediaButtonReceiver` das schon behebt.
+- **Schritte:**
+  1. APK aus dem CI-Lauf dieses PRs installieren (`adb install -r …`, notfalls vorher deinstallieren).
+  2. Abschnitt **Diagnose** im Hauptfenster: Was steht bei „Benachrichtigungen“? Dann
+     „Benachrichtigungen erlauben“ antippen. Erscheint ein Dialog? Was steht danach im Log und in
+     der Statuszeile?
+  3. „Log leeren“, dann „Testton abspielen“.
+  4. Fenster minimieren, sodass das System-Pop-up erscheint. Nacheinander **Pause**, **Play**,
+     **Vor**, **Zurück** antippen, jeweils mit 2–3 s Abstand. Wirkt einer der Buttons?
+  5. Zurück ins Hauptfenster und das Diagnose-Log abfotografieren oder abschreiben. Einfacher:
+     währenddessen `adb logcat -s ShelfVR-Diag` am PC mitlaufen lassen und die Ausgabe in den PR
+     kopieren.
+  6. Dasselbe mit einem Buch aus S-3 (Anmeldung über HTTPS) wiederholen.
+- **Erwartet (Hypothesen):**
+  - Erscheinen bei den Pop-up-Buttons Zeilen wie „Befehl PLAY_PAUSE von …“ oder „Media-Button …“,
+    kommen die Befehle an. Dann liegt der Fehler in deren Verarbeitung.
+  - Erscheint gar nichts, erreicht das Pop-up unsere Session nicht. Wichtig ist dann, welches
+    Paket in den Zeilen „Verbunden: …“ steht.
+  - Funktionieren die Buttons jetzt, hat der `MediaButtonReceiver` das Problem behoben.
+- **Ergebnis:**
