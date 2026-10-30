@@ -53,7 +53,11 @@ class AuthTest {
 
     private val serverUrl get() = server.url("/abs/")
     private val tokenStore = InMemoryTokenStore()
-    private val client by lazy { AbsClientFactory.createHttpClient(tokenStore) }
+    private val cleartext = InMemoryCleartextPolicy()
+    private val client by lazy {
+        cleartext.allow(serverUrl.origin)
+        AbsClientFactory.createHttpClient(tokenStore, cleartext)
+    }
     private val api by lazy { AbsClientFactory.createApi(serverUrl, client) }
 
     @Test
@@ -104,6 +108,8 @@ class AuthTest {
         MockWebServer().use { other ->
             other.enqueue(MockResponse.Builder().code(200).build())
             other.start()
+            // Nur der Token-Schutz soll hier greifen, nicht die Cleartext-Regel.
+            cleartext.allow(other.url("/").origin)
 
             client.newCall(Request.Builder().url(other.url("/abs/api/libraries")).build()).execute().close()
 

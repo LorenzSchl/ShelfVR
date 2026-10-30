@@ -95,6 +95,8 @@ class MainActivity : ComponentActivity() {
         override fun onUsernameChange(value: String) = s3.onUsernameChange(value)
         override fun onPasswordChange(value: String) = s3.onPasswordChange(value)
         override fun login() = s3.login()
+        override fun confirmCleartext() = s3.confirmCleartext()
+        override fun dismissCleartext() = s3.dismissCleartext()
         override fun playItem(id: String) = s3.play(id)
         override fun closeSession() = s3.closeSession()
     }

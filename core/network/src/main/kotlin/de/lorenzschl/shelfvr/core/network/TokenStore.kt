@@ -22,6 +22,9 @@ data class AbsSession(
 interface TokenStore {
     val session: StateFlow<AbsSession?>
     fun update(session: AbsSession?)
+
+    /** Wartet, bis eine gespeicherte Sitzung geladen ist (nach App-Start oder Fenster-Wiederherstellung). */
+    suspend fun awaitRestored() {}
 }
 
 /** Nur für Spikes und Tests; die verschlüsselte Variante folgt mit FR-02 (M1). */

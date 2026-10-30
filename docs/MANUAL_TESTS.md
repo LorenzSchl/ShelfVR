@@ -137,3 +137,41 @@ Die Designsprache passt erstmal so!
 - **Ergebnis:**
 - is mir egal.
 - ci ist grün, apk lief auf der quest :)
+
+## MT-06 · HTTP-Server im LAN per Opt-in (#4)
+
+- **Status:** offen
+- **Commit:** 6402b8b
+- **Voraussetzung:** Dein ABS ist im LAN auch per `http://<IP>:<Port>` erreichbar.
+- **Schritte:**
+  1. APK aus dem CI-Lauf dieses PRs installieren.
+  2. S-3: `http://<IP>:<Port>` eingeben, Benutzer und Passwort eintragen, „Anmelden“.
+  3. Der Warnhinweis „Unverschlüsselte Verbindung“ erscheint. Zuerst **Abbrechen**: Es darf keine
+     Anmeldung stattfinden.
+  4. Erneut „Anmelden“, diesmal **Trotzdem verbinden**: Die Anmeldung klappt, Bücher erscheinen.
+  5. Ein Buch abspielen. Der Stream läuft ebenfalls über HTTP und muss funktionieren.
+  6. Gegenprobe: Login mit der HTTPS-Domain erfolgt ohne Warnhinweis.
+  7. App beenden und neu starten: Der Warnhinweis erscheint wieder, weil die Zustimmung bis #5 nur
+     im Speicher liegt.
+- **Erwartet:** HTTP funktioniert nur nach Bestätigung, HTTPS unverändert.
+- **Ergebnis:**
+
+## MT-07 · Persistenz: Anmeldung und HTTP-Zustimmung überstehen einen Neustart (#5)
+
+- **Status:** offen
+- **Commit:** 8c398c4
+- **Schritte:**
+  1. APK aus dem CI-Lauf dieses PRs installieren. Die Installation muss ein Update sein, damit die
+     Daten erhalten bleiben. Ist ein Deinstallieren nötig, ab Schritt 2 trotzdem weitermachen.
+  2. S-3: Mit der HTTPS-Domain anmelden. Die Bücherliste erscheint.
+  3. App vollständig beenden (Fenster schließen, in den App-Einstellungen „Beenden erzwingen“) und
+     neu starten.
+  4. Erwartet: Ohne Passworteingabe steht „Gespeicherte Sitzung wird geladen …“, danach erscheinen
+     Statuszeile und Bücher. Ein Buch abspielen und den Sync prüfen.
+  5. Nur wenn MT-06 möglich ist: Mit `http://<IP>:<Port>` anmelden und den Warnhinweis bestätigen.
+     App neu starten, abmelden ist im Spike nicht möglich. Erneut mit derselben HTTP-Adresse anmelden:
+     Der Warnhinweis darf **nicht** mehr erscheinen.
+  6. Quest neu starten, App öffnen: Die Sitzung ist weiterhin da.
+- **Erwartet:** Anmeldung und HTTP-Zustimmung überstehen App- und Geräteneustart. Keine
+  Abstürze beim Start, auch nicht ohne WLAN (dann Fehlermeldung statt Liste).
+- **Ergebnis:**

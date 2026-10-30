@@ -16,6 +16,8 @@ import de.lorenzschl.shelfvr.core.model.AudioTrack
 import de.lorenzschl.shelfvr.core.network.AbsApi
 import de.lorenzschl.shelfvr.core.network.AbsClientFactory
 import de.lorenzschl.shelfvr.core.network.AbsSession
+import de.lorenzschl.shelfvr.core.network.CleartextNotPermittedException
+import de.lorenzschl.shelfvr.core.network.CleartextPolicy
 import de.lorenzschl.shelfvr.core.network.ServerUrl
 import de.lorenzschl.shelfvr.core.network.TokenStore
 import de.lorenzschl.shelfvr.core.network.dto.DeviceInfoDto
@@ -23,7 +25,9 @@ import de.lorenzschl.shelfvr.core.network.dto.LoginRequest
 import de.lorenzschl.shelfvr.core.network.dto.PlayRequest
 import de.lorenzschl.shelfvr.core.network.dto.PlaybackSessionDto
 import de.lorenzschl.shelfvr.core.network.dto.SyncRequest
+import de.lorenzschl.shelfvr.core.network.origin
 import de.lorenzschl.shelfvr.core.network.resolveServerPath
+import de.lorenzschl.shelfvr.domain.AccountRepository
 import de.lorenzschl.shelfvr.domain.TrackPosition
 import de.lorenzschl.shelfvr.domain.TrackTimeline
 import de.lorenzschl.shelfvr.playback.PlaybackClient
@@ -32,6 +36,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -57,7 +62,9 @@ import javax.net.ssl.SSLException
 class S3ViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val tokenStore: TokenStore,
+    private val cleartextPolicy: CleartextPolicy,
     private val httpClient: OkHttpClient,
+    private val accountRepository: AccountRepository,
 ) : ViewModel() {
 
     private val state = MutableStateFlow(S3UiState())
@@ -71,6 +78,29 @@ class S3ViewModel @Inject constructor(
 
     private class ActiveSession(val dto: PlaybackSessionDto, val timeline: TrackTimeline)
 
+    init {
+        // Gespeicherte Sitzung (#5) wiederherstellen, sonst URL und Benutzer vorbelegen.
+        viewModelScope.launch {
+            tokenStore.awaitRestored()
+            val stored = tokenStore.session.value
+            val account = accountRepository.activeAccount.first()
+            state.update {
+                it.copy(
+                    serverUrl = stored?.serverUrl?.toString() ?: account?.server?.url ?: it.serverUrl,
+                    username = stored?.username ?: account?.account?.username ?: it.username,
+                )
+            }
+            if (stored != null) {
+                state.update { it.copy(busy = true, status = "Gespeicherte Sitzung wird geladen …") }
+                try {
+                    loadLibrary(AbsClientFactory.createApi(stored.serverUrl, httpClient), stored.serverUrl, stored.username, account?.account?.defaultLibraryId)
+                } catch (e: Exception) {
+                    state.update { it.copy(busy = false, status = null, error = describe(e)) }
+                }
+            }
+        }
+    }
+
     fun onServerUrlChange(value: String) = state.update { it.copy(serverUrl = value) }
     fun onUsernameChange(value: String) = state.update { it.copy(username = value) }
     fun onPasswordChange(value: String) = state.update { it.copy(password = value) }
@@ -79,6 +109,9 @@ class S3ViewModel @Inject constructor(
         val current = state.value
         val url = ServerUrl.normalize(current.serverUrl)
             ?: return state.update { it.copy(error = "Ungültige Server-URL.") }
+        if (!url.isHttps && !cleartextPolicy.isAllowed(url.origin)) {
+            return state.update { it.copy(cleartextConfirmation = url.origin, error = null) }
+        }
         state.update { it.copy(busy = true, error = null, status = "Melde an …") }
         viewModelScope.launch {
             try {
@@ -91,36 +124,55 @@ class S3ViewModel @Inject constructor(
                     return@launch
                 }
                 tokenStore.update(AbsSession(url, login.user.username, access, refresh))
-                api = client
-                serverUrl = url
-
-                val version = client.authorize().serverSettings?.version
-                val books = client.libraries().libraries.filter { it.mediaType == "book" }
-                val library = books.firstOrNull { it.id == login.userDefaultLibraryId } ?: books.firstOrNull()
-                val items = library?.let {
-                    client.libraryItems(it.id, limit = 50, sort = "media.metadata.title").results
-                }.orEmpty()
-                state.update {
-                    it.copy(
-                        busy = false,
-                        password = "",
-                        status = "Angemeldet als ${login.user.username} · ABS ${version ?: "?"} · " +
-                            (library?.name ?: "keine Buch-Bibliothek"),
-                        items = items.map { item ->
-                            S3Item(
-                                id = item.id,
-                                title = item.media.metadata.title ?: item.id,
-                                author = item.media.metadata.authorName,
-                                tracks = item.media.numTracks,
-                            )
-                        },
-                    )
-                }
+                accountRepository.saveLogin(
+                    serverUrl = url.toString(),
+                    serverVersion = login.serverSettings?.version,
+                    userId = login.user.id,
+                    username = login.user.username,
+                    defaultLibraryId = login.userDefaultLibraryId,
+                )
+                state.update { it.copy(password = "") }
+                loadLibrary(client, url, login.user.username, login.userDefaultLibraryId)
             } catch (e: Exception) {
                 state.update { it.copy(busy = false, status = null, error = describe(e)) }
             }
         }
     }
+
+    private suspend fun loadLibrary(client: AbsApi, url: HttpUrl, username: String, defaultLibraryId: String?) {
+        api = client
+        serverUrl = url
+        val version = client.authorize().serverSettings?.version
+        val books = client.libraries().libraries.filter { it.mediaType == "book" }
+        val library = books.firstOrNull { it.id == defaultLibraryId } ?: books.firstOrNull()
+        val items = library?.let {
+            client.libraryItems(it.id, limit = 50, sort = "media.metadata.title").results
+        }.orEmpty()
+        state.update {
+            it.copy(
+                busy = false,
+                status = "Angemeldet als $username · ABS ${version ?: "?"} · " + (library?.name ?: "keine Buch-Bibliothek"),
+                items = items.map { item ->
+                    S3Item(
+                        id = item.id,
+                        title = item.media.metadata.title ?: item.id,
+                        author = item.media.metadata.authorName,
+                        tracks = item.media.numTracks,
+                    )
+                },
+            )
+        }
+    }
+
+    /** Nutzer hat den Warnhinweis bestätigt: HTTP für genau diesen Server freigeben (§3.2). */
+    fun confirmCleartext() {
+        val origin = state.value.cleartextConfirmation ?: return
+        cleartextPolicy.allow(origin)
+        state.update { it.copy(cleartextConfirmation = null) }
+        login()
+    }
+
+    fun dismissCleartext() = state.update { it.copy(cleartextConfirmation = null) }
 
     fun play(itemId: String) {
         val client = api ?: return
@@ -250,7 +302,8 @@ class S3ViewModel @Inject constructor(
         is SSLException -> "TLS-Fehler: ${e.message}"
         is SocketTimeoutException -> "Zeitüberschreitung."
         is ConnectException -> "Verbindung abgelehnt."
-        is UnknownServiceException -> "Unverschlüsseltes HTTP ist gesperrt – bitte https:// verwenden."
+        is CleartextNotPermittedException -> "HTTP für ${e.origin} ist nicht freigegeben."
+        is UnknownServiceException -> "Unverschlüsseltes HTTP wird vom System blockiert."
         is HttpException -> if (e.code() == 401) "Anmeldung abgelehnt (401)." else "HTTP-Fehler ${e.code()}."
         is SerializationException -> "Unerwartete Antwort – ist das ein ABS-Server?"
         else -> e::class.simpleName ?: "Unbekannter Fehler"
@@ -267,6 +320,8 @@ data class S3UiState(
     val items: List<S3Item> = emptyList(),
     val playing: String? = null,
     val lastSync: String? = null,
+    /** Ursprung, für den der HTTP-Warnhinweis gerade angezeigt wird. */
+    val cleartextConfirmation: String? = null,
 )
 
 data class S3Item(val id: String, val title: String, val author: String?, val tracks: Int?)
