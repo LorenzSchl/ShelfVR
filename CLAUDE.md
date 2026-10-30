@@ -28,31 +28,43 @@ Spec-Regeln, die beim Coden ständig greifen (Details in §0):
 ## Build & Test
 - Build: `./gradlew assembleDebug`
 - Unit-Tests: `./gradlew testDebugUnitTest`
-- Einzelner Test: `./gradlew :core:network:testDebugUnitTest --tests "*.TokenRefreshTest"`
+- Einzelner Test: `./gradlew :core:network:testDebugUnitTest --tests "*.AuthTest"`
 - Screenshot-Tests prüfen: `./gradlew verifyRoborazziDebug`
 - Screenshot-Referenzen neu aufnehmen: `./gradlew recordRoborazziDebug`
   (nur bei gewollten UI-Änderungen; im Commit begründen)
 - Lint: `./gradlew lintDebug`
+- Alles wie in CI: `./gradlew assembleDebug testDebugUnitTest verifyRoborazziDebug lintDebug`
 
-Diese Befehle beschreiben den Zielzustand. Solange das Projektgerüst noch nicht
-steht, ist das Anlegen genau dieser Tasks Teil der Aufgabe. Ändern sich Task-Namen
-oder Pfade, diese Datei im selben Commit anpassen.
+Ändern sich Task-Namen oder Pfade, diese Datei im selben Commit anpassen.
 
-Reine Kotlin-Module (`kotlin("jvm")`, z. B. `:core:model`, `:domain`) haben nur den
-Task `test` und würden von `./gradlew testDebugUnitTest` übersprungen. Das Gerüst
-muss deshalb in diesen Modulen einen Task `testDebugUnitTest` registrieren, der von
-`test` abhängt (z. B. per Convention-Plugin), damit der Befehl oben alle Module erfasst.
+Reine Kotlin-Module (`:core:model`, `:core:network`, `:domain`) haben eigentlich nur
+`test` und `lint`. Das Convention-Plugin `shelfvr.jvm.library` registriert dort
+`testDebugUnitTest` und `lintDebug` als Aliase, damit die Befehle oben alle Module erfassen.
+Neue reine Kotlin-Module deshalb immer mit diesem Plugin anlegen.
 
 Vor jedem Commit: Build, Unit-Tests und Screenshot-Tests grün, Lint ohne Errors.
 Commit-Nachrichten nennen die Anforderungs-ID aus der Spec (FR-xx, R-xx, P-xx, NFR-xx),
 sofern eine betroffen ist.
 
+## Projektaufbau
+- Modulschnitt nach Spec §5.1. Gemeinsame Build-Konfiguration steckt in
+  Convention-Plugins unter `build-logic/` (`shelfvr.android.library`, `…compose`,
+  `…roborazzi`, `shelfvr.hilt`, `shelfvr.jvm.library`). Namespaces von
+  Android-Libraries werden aus dem Modulpfad abgeleitet (`:core:network` →
+  `de.lorenzschl.shelfvr.core.network`).
+- SDK-Level stehen im Version Catalog: compileSdk 37 (von der Compose-BOM verlangt),
+  targetSdk 34 (Android-Basis von Horizon OS), minSdk 32.
+- `app/src/main/kotlin/…/spike/` ist Wegwerf-Code für Phase 0 (Spikes S-1 bis S-3),
+  ohne String-Ressourcen. Nach Abschluss der Spikes entfernen, nicht ausbauen.
+
 ## Arbeiten ohne Quest
 - Kein `adb`, keine Gerätetests. Alles, was ohne Gerät prüfbar ist, wird ohne Gerät geprüft.
 - Die UI-Smoke-Tests im Simulator/Emulator aus NFR-08 ersetzen hier Screenshot-Tests
   mit Roborazzi.
-- UI-Kontrolle über Screenshot-Tests: PNGs liegen unter
-  `<modul>/build/outputs/roborazzi/` (z. B. `app/`, `core/designsystem/`, `feature/*/`).
+- UI-Kontrolle über Screenshot-Tests (Roborazzi + Robolectric): Referenzbilder liegen
+  versioniert unter `<modul>/src/test/screenshots/`, Vergleichsbilder und Diffs nach
+  `verifyRoborazziDebug` unter `<modul>/build/outputs/roborazzi/`. Screenshot-Tests mit
+  deutschem Locale (`@Config(qualifiers = "de-…")`) und realistischer Fenstergröße.
   Nach UI-Änderungen die Bilder **ansehen** und auf Lesbarkeit in VR achten (große
   Schrift, ausreichender Kontrast, keine abgeschnittenen Texte, genug Abstand für
   Controller/Hand-Eingabe).
@@ -69,8 +81,10 @@ sofern eine betroffen ist.
   Fixtures aufgezeichneter Antworten mit der Server-Version kennzeichnen.
 - Zugangsdaten in `.env.test` (Vorlage: `.env.test.example`).
   In der Shell laden: `set -a && . ./.env.test && set +a`
-- Integrationstests gegen diesen Server lesen `.env.test` über Gradle ein und
-  werden übersprungen, wenn die Datei fehlt.
+- Integrationstests gegen diesen Server (`:core:network`, `AbsServerIntegrationTest`)
+  lesen `.env.test` selbst ein (`TestEnv`; Gradle reicht nur den Pfad durch) und werden
+  übersprungen, wenn die Datei fehlt – so auch in CI. Sie verändern den Hörfortschritt
+  des Test-Users; bei Bedarf den Server zurücksetzen.
 - Zurücksetzen auf den Ausgangszustand:
   `cd ~/abs-test && docker compose down && rm -rf config metadata && tar xzf ~/abs-test-baseline.tgz && docker compose up -d`
 - Testdaten (LibriVox + Problemfälle wie M4B mit Kapiteln, Multi-MP3, Opus,
