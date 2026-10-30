@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="miniplayer_nothing_playing">Gerade läuft nichts</string>
+    <string name="miniplayer_play">Abspielen</string>
+    <string name="miniplayer_pause">Pausieren</string>
+    <plurals name="miniplayer_skip_back">
+        <item quantity="one">%1$d Sekunde zurück</item>
+        <item quantity="other">%1$d Sekunden zurück</item>
+    </plurals>
+    <plurals name="miniplayer_skip_forward">
+        <item quantity="one">%1$d Sekunde vor</item>
+        <item quantity="other">%1$d Sekunden vor</item>
+    </plurals>
+    <string name="miniplayer_expand">Großes Fenster öffnen</string>
+</resources>
