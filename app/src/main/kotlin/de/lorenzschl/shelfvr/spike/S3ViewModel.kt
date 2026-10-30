@@ -16,6 +16,8 @@ import de.lorenzschl.shelfvr.core.model.AudioTrack
 import de.lorenzschl.shelfvr.core.network.AbsApi
 import de.lorenzschl.shelfvr.core.network.AbsClientFactory
 import de.lorenzschl.shelfvr.core.network.AbsSession
+import de.lorenzschl.shelfvr.core.network.CleartextNotPermittedException
+import de.lorenzschl.shelfvr.core.network.CleartextPolicy
 import de.lorenzschl.shelfvr.core.network.ServerUrl
 import de.lorenzschl.shelfvr.core.network.TokenStore
 import de.lorenzschl.shelfvr.core.network.dto.DeviceInfoDto
@@ -23,6 +25,7 @@ import de.lorenzschl.shelfvr.core.network.dto.LoginRequest
 import de.lorenzschl.shelfvr.core.network.dto.PlayRequest
 import de.lorenzschl.shelfvr.core.network.dto.PlaybackSessionDto
 import de.lorenzschl.shelfvr.core.network.dto.SyncRequest
+import de.lorenzschl.shelfvr.core.network.origin
 import de.lorenzschl.shelfvr.core.network.resolveServerPath
 import de.lorenzschl.shelfvr.domain.TrackPosition
 import de.lorenzschl.shelfvr.domain.TrackTimeline
@@ -57,6 +60,7 @@ import javax.net.ssl.SSLException
 class S3ViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val tokenStore: TokenStore,
+    private val cleartextPolicy: CleartextPolicy,
     private val httpClient: OkHttpClient,
 ) : ViewModel() {
 
@@ -79,6 +83,9 @@ class S3ViewModel @Inject constructor(
         val current = state.value
         val url = ServerUrl.normalize(current.serverUrl)
             ?: return state.update { it.copy(error = "Ungültige Server-URL.") }
+        if (!url.isHttps && !cleartextPolicy.isAllowed(url.origin)) {
+            return state.update { it.copy(cleartextConfirmation = url.origin, error = null) }
+        }
         state.update { it.copy(busy = true, error = null, status = "Melde an …") }
         viewModelScope.launch {
             try {
@@ -121,6 +128,16 @@ class S3ViewModel @Inject constructor(
             }
         }
     }
+
+    /** Nutzer hat den Warnhinweis bestätigt: HTTP für genau diesen Server freigeben (§3.2). */
+    fun confirmCleartext() {
+        val origin = state.value.cleartextConfirmation ?: return
+        cleartextPolicy.allow(origin)
+        state.update { it.copy(cleartextConfirmation = null) }
+        login()
+    }
+
+    fun dismissCleartext() = state.update { it.copy(cleartextConfirmation = null) }
 
     fun play(itemId: String) {
         val client = api ?: return
@@ -250,7 +267,8 @@ class S3ViewModel @Inject constructor(
         is SSLException -> "TLS-Fehler: ${e.message}"
         is SocketTimeoutException -> "Zeitüberschreitung."
         is ConnectException -> "Verbindung abgelehnt."
-        is UnknownServiceException -> "Unverschlüsseltes HTTP ist gesperrt – bitte https:// verwenden."
+        is CleartextNotPermittedException -> "HTTP für ${e.origin} ist nicht freigegeben."
+        is UnknownServiceException -> "Unverschlüsseltes HTTP wird vom System blockiert."
         is HttpException -> if (e.code() == 401) "Anmeldung abgelehnt (401)." else "HTTP-Fehler ${e.code()}."
         is SerializationException -> "Unerwartete Antwort – ist das ein ABS-Server?"
         else -> e::class.simpleName ?: "Unbekannter Fehler"
@@ -267,6 +285,8 @@ data class S3UiState(
     val items: List<S3Item> = emptyList(),
     val playing: String? = null,
     val lastSync: String? = null,
+    /** Ursprung, für den der HTTP-Warnhinweis gerade angezeigt wird. */
+    val cleartextConfirmation: String? = null,
 )
 
 data class S3Item(val id: String, val title: String, val author: String?, val tracks: Int?)

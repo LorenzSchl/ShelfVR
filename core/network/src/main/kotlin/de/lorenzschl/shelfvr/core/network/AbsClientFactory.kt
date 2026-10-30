@@ -19,12 +19,21 @@ object AbsClientFactory {
 
     /**
      * Die eine OkHttp-Instanz für API und Audio-Streaming (Media3 `OkHttpDataSource`).
-     * Kein HTTP-Logging: Header enthalten Tokens.
+     * Kein HTTP-Logging: Header enthalten Tokens. Der Refresh-Client erbt die Cleartext-Regel.
      */
-    fun createHttpClient(tokenStore: TokenStore, base: OkHttpClient = OkHttpClient()): OkHttpClient {
+    fun createHttpClient(
+        tokenStore: TokenStore,
+        cleartextPolicy: CleartextPolicy,
+        base: OkHttpClient = OkHttpClient(),
+    ): OkHttpClient {
+        val cleartextGuard = CleartextGuardInterceptor(cleartextPolicy)
         val plain = base.newBuilder()
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
+            // Nie automatisch zwischen HTTPS und HTTP wechseln (§3.2).
+            .followSslRedirects(false)
+            .addInterceptor(cleartextGuard)
+            .addNetworkInterceptor(cleartextGuard)
             .build()
         return plain.newBuilder()
             .addInterceptor(AuthInterceptor(tokenStore))
