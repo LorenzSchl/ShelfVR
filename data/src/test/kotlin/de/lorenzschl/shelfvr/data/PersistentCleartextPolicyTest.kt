@@ -8,7 +8,6 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withTimeout
 import org.junit.Rule
 import org.junit.rules.TemporaryFolder
 import java.io.File
@@ -33,19 +32,20 @@ class PersistentCleartextPolicyTest {
     @Test
     fun `Zustimmung wird gespeichert und nach Neustart wieder geladen`() = runBlocking {
         val origin = "http://192.168.1.20:13378"
-        val policy = PersistentCleartextPolicy(settings, io)
+        val policy = PersistentCleartextPolicy(settings, io, isMainThread = { false })
         assertFalse(policy.isAllowed(origin))
 
         policy.allow(origin)
         assertTrue(policy.isAllowed(origin))
-        withTimeout(5_000) { settings.cleartextOrigins.first { origin in it } }
+        // Abseits des Main-Threads wird synchron gespeichert.
+        assertTrue(origin in settings.cleartextOrigins.first())
 
-        assertTrue(PersistentCleartextPolicy(settings, io).isAllowed(origin))
+        assertTrue(PersistentCleartextPolicy(settings, io, isMainThread = { false }).isAllowed(origin))
     }
 
     @Test
     fun `Widerruf wirkt sofort`() {
-        val policy = PersistentCleartextPolicy(settings, io)
+        val policy = PersistentCleartextPolicy(settings, io, isMainThread = { false })
         policy.allow("http://nas:80")
         policy.revoke("http://nas:80")
 
