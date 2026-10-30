@@ -3,6 +3,7 @@
 Alles, was nur auf der Brille (oder durch Lorenz) geprüft bzw. erledigt werden kann.
 Ergebnisse bitte im jeweiligen Abschnitt unter **Ergebnis** eintragen oder in den zugehörigen
 PR schreiben. Status: `offen` → `ok` / `nicht ok` / `erledigt`.
+Auswertungen der Spikes stehen in `docs/spikes/`.
 
 > Das Repo ist öffentlich: Server-Adressen, Benutzernamen und Tokens nie hier oder im PR notieren.
 
@@ -10,7 +11,7 @@ PR schreiben. Status: `offen` → `ok` / `nicht ok` / `erledigt`.
 
 ## MT-00 · Vorbereitung: Quest einrichten und APK installieren
 
-- **Status:** offen
+- **Status:** ok
 - **Commit:** e5ac5b5 (CI baut das APK)
 - **Schritte:**
   1. Entwicklermodus auf der Quest 2 aktivieren (Meta-Horizon-App am Handy → Gerät →
@@ -29,7 +30,7 @@ PR schreiben. Status: `offen` → `ok` / `nicht ok` / `erledigt`.
 
 ## MT-01 · Spike S-1: Hintergrund-Audio und System-Mediensteuerung
 
-- **Status:** offen
+- **Status:** teilweise – System-Mediensteuerung → #3; Hand-Tracking offen → #15
 - **Commit:** 9ce750e
 - **Schritte:**
   1. Im Abschnitt S-1 zuerst **ohne** „Benachrichtigungen erlauben“ den „Testton abspielen“.
@@ -60,7 +61,7 @@ Die Designsprache passt erstmal so!
 
 ## MT-02 · Spike S-2: Mehrere Fenster und Mini-Player
 
-- **Status:** offen
+- **Status:** ok – Bugs → #14
 - **Commit:** 9ce750e
 - **Schritte:**
   1. Testton starten.
@@ -92,7 +93,7 @@ Die Designsprache passt erstmal so!
 
 ## MT-03 · Spike S-3: Login, Streaming und Sync gegen deinen ABS-Server
 
-- **Status:** offen
+- **Status:** ok – HTTP → #4
 - **Commit:** 23b2323 (ABS-Client), 9ce750e (Spike-UI)
 - **Hinweise:** Tokens liegen im Spike nur im Speicher; nach einem App-Neustart erneut anmelden.
   Der Sync läuft im Spike nur, solange das Hauptfenster offen ist (der richtige Sync im
@@ -126,7 +127,7 @@ Die Designsprache passt erstmal so!
 
 ## MT-04 · Zu erledigen (keine Tests)
 
-- **Status:** offen
+- **Status:** erledigt
 - **Commit:** e5ac5b5
 - **Aufgaben:**
   1. `LICENSE`: Als Copyright-Inhaber steht der GitHub-Name „LorenzSchl“. Falls du deinen vollen

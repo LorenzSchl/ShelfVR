@@ -1,7 +1,7 @@
 # ShelfVR – Audiobookshelf-Player für Meta Quest
 
 > **Ideen- und Spezifikationsdokument für Coding-Agenten**
-> Stand: 30.10.2026 (Rev. 2: Stufe 2 auf anheftbare Fenster umgestellt) · Owner: Lorenz · Status: *Konzept freigegeben, Implementierung noch nicht begonnen*
+> Stand: 30.10.2026 (Rev. 3: Ergebnisse Phase 0 eingearbeitet, siehe `docs/spikes/`) · Owner: Lorenz · Status: *Phase 0 (S-1 bis S-3) abgeschlossen, M1 beginnt*
 > Arbeitstitel „ShelfVR“: Name und Package-ID sind noch offen (siehe §13).
 
 ---
@@ -51,9 +51,9 @@ Ein nativer Audiobookshelf-Client (ABS) für Meta Quest in zwei Stufen:
 | Hintergrund-Audio | 🟢 machbar | Offiziell unterstützt über Media3 `MediaSession` + `MediaSessionService` (Foreground-Service). Die System-Mediensteuerung erscheint, wenn die App im Hintergrund ist. |
 | ABS-Anbindung | 🟢 machbar, 🟡 Doku-Risiko | Die REST-API ist vollständig vorhanden, die Doku aber veraltet. Seit ABS v2.26 gilt JWT-Auth mit Refresh-Token (§6). |
 | Mehrere Fenster einer App | 🟢 machbar | Mehrere Activities in eigenen Panels sind ein Standard-Feature (`FLAG_ACTIVITY_LAUNCH_ADJACENT` + `NEW_TASK` + `MULTIPLE_TASK`), Default-Größe per Manifest. Grundlage für Mini-Player, Regal- und Playerfenster. |
-| Mini-Player-Leiste | 🟡 machbar, Details offen | Wie klein Horizon OS ein Fenster zulässt, muss ein Spike klären (S-2). |
+| Mini-Player-Leiste | 🟢 machbar | S-2: Ein zweites, kleines Panel funktioniert. Horizon OS skaliert Panels aber selbst (Faktor 1,25; Ziehen am Rand skaliert im Raum statt das Layout zu verkleinern). Vorrang hat die System-Mediensteuerung (§7.6). |
 | Fenster an Wände heften | 🟡 machbar, aber vom System gesteuert und im Wandel | Seit Horizon OS v81 können Nutzer 2D-Fenster per „Anker“ im Loft (Immersive Home) und im Passthrough anheften. Die Anker überleben einen Neustart. **Grenzen:** bis zu drei Anker pro Modus (Loft bzw. Passthrough), und es gibt keine Entwickler-API. In der aktuellen Testversion (PTC, Okt. 2026) ersetzt Meta den Anker durch „Magnetismus“ an Oberflächen. Die Details können sich also noch ändern (§10, RI-02). |
-| Räumlicher Klang | 🟢 wahrscheinlich, 🟡 Details offen | Horizon OS gibt den Ton von 2D-Fenstern räumlich an der Fensterposition wieder (von Lorenz beim Quest-Browser beobachtet). Die App muss dafür nichts tun. Offen ist, **welchem Fenster** das System den Ton zuordnet, wenn eine App mehrere Fenster hat und der Ton aus einem Hintergrund-Service kommt. Das klärt Spike S-4. |
+| Räumlicher Klang | 🟢 wahrscheinlich, 🟡 Details offen | Horizon OS gibt den Ton von 2D-Fenstern räumlich an der Fensterposition wieder (von Lorenz beim Quest-Browser beobachtet). Die App muss dafür nichts tun. S-1 bestätigt: Der Ton kommt aus dem Fenster und wandert mit, wenn es verschoben wird. Offen ist, **welchem Fenster** das System den Ton zuordnet, wenn eine App mehrere Fenster hat und der Ton aus einem Hintergrund-Service kommt. Das klärt Spike S-4. |
 | Regal-Optik im Fenster | 🟢 machbar | Reine Compose-UI. Ob das Fenster einen transparenten Hintergrund haben kann (Regal „hängt“ ohne Rahmen an der Wand), prüft S-5. |
 
 **Gesamtfazit:** Das Projekt ist auf Quest 2 umsetzbar, und die Fenster-Lösung für Stufe 2 ist **deutlich einfacher** als ein eigener 3D-Loft: kein Spatial SDK, keine 3D-Assets, kein Performance-Budget für eine Szene. Räumlichen Klang liefert das System gleich mit, weil Horizon OS den Ton von 2D-Fenstern an deren Position wiedergibt. Der Preis: Platzierung, Anzahl der angehefteten Fenster und die Zuordnung des Tons zu einem Fenster liegen beim System statt bei der App. Diese Punkte klären die Spikes in Phase 0, bevor Features gebaut werden.
@@ -75,7 +75,8 @@ Ein nativer Audiobookshelf-Client (ABS) für Meta Quest in zwei Stufen:
 - **Annahme:** Der ABS-Server ist von der Quest **direkt über eine IP-Adresse oder eine Domain** erreichbar. VPN-/Tailnet-Szenarien muss die App nicht berücksichtigen.
 - **Referenz-Setup (Lorenz):** Die Quest wird im Heimnetz genutzt; ABS ist dort über eine **SSL-geschützte Domain** (gültiges Zertifikat) erreichbar.
 - **Konsequenzen:**
-  - `https://<domain>` ist der Normalfall. `http://<ip>:<port>` im LAN muss ebenfalls funktionieren; Cleartext dafür nur per explizitem Opt-in in der `network_security_config`, nicht global.
+  - `https://<domain>` ist der Normalfall. `http://<ip>:<port>` im LAN muss ebenfalls funktionieren, aber nur per **explizitem Opt-in pro Server in der App** (Warnhinweis bestätigen; die Zustimmung gilt für Schema + Host + Port).
+  - *Rev. 3:* Die `network_security_config` kann keine IP-Bereiche freigeben, nur feste Hostnamen. Deshalb erlaubt sie Cleartext auf Plattformebene, und die App setzt das Opt-in selbst durch (Interceptor in der geteilten OkHttp-Instanz, gilt für API und Streams). Redirects von HTTPS auf HTTP werden nie automatisch zugelassen.
   - Die Server-URL wird normalisiert (Schema ergänzen, Trailing Slash, Port, Subpfad-Deployments wie `https://host/audiobookshelf`).
 - **Mindest-ABS-Version:** 2.26 (JWT-Auth). **Empfohlen ≥ 2.36**, weil vorher ein Auth-Fehler (CVE-2026-73085) Refresh-Tokens auf API-Endpunkten akzeptierte. Bei älteren Servern zeigt die App einen Hinweis.
 
@@ -272,13 +273,15 @@ Jede Anforderung hat eine ID. Commits und Tests referenzieren sie.
 - **FR-51** **Mini-Player-Leiste:** Cover, Buchtitel, Kapiteltitel, Laufzeitinfos (Position/Restzeit im Kapitel, Fortschritt im Buch), Play/Pause, ±n s, Kapitel vor/zurück. Optional: Geschwindigkeit als kleiner Chip.
 - **FR-52** Wechsel groß ↔ mini per Button in beide Richtungen; die Wiedergabe läuft unterbrechungsfrei weiter.
 - **FR-53** Der Mini-Player ist im Raum frei positionierbar und bleibt sichtbar, während andere Apps laufen.
-- **Umsetzungsoptionen (Spike S-2 entscheidet, Ergebnis Lorenz vorlegen):**
+- **Entscheidung nach S-1/S-2 (Rev. 3):** Zuerst die System-Mediensteuerung als „Mini-Player“ (Variante C) vollständig nutzbar machen (Titel, Kapitel als Untertitel, Cover, eigene Buttons ±n s und Kapitel, FR-37). Das Mini-Player-Fenster (Variante A) bleibt erhalten (genau eine Instanz), wird aber erst gegen Ende des MVP ausgebaut. Variante B entfällt.
+- **Umsetzungsoptionen (ursprünglich):**
   - **A:** eigene `MiniPlayerActivity` als zweites, kleines Panel (Manifest-`<layout>` mit kleiner Default-Größe); das Hauptfenster wird beim Wechsel geschlossen. *Bevorzugt, weil dieselbe Mehrfenster-Technik wie in Stufe 2.*
   - **B:** dieselbe Activity mit Compose-Layoutwechsel und Fensterverkleinerung, falls Horizon OS programmatisches Resizing erlaubt.
   - **C (Fallback):** großer Modus + System-Mediensteuerung als „Mini-Player“.
 
 ### 7.7 Einstellungen
 - **FR-60** Skip-Intervalle, Default-Geschwindigkeit, Sync-Intervall, Sprache (DE/EN), Server/Account-Verwaltung, App-Version und ABS-Server-Version.
+- **FR-61** *(Rev. 3)* Einstellung „Beim Absetzen der Brille pausieren“, Standard **aus**. Ohne die Einstellung läuft die Wiedergabe beim Absetzen weiter (beobachtet in S-1). Welches Signal Horizon OS beim Absetzen liefert, ist bei der Umsetzung zu klären.
 
 ---
 
@@ -412,7 +415,7 @@ data class ShelfConfig(
 | M0 | Projektgerüst, Module, CI, Spikes S-1 bis S-3 | NFR-09 |
 | M1 | Server einrichten, Login, Bibliotheken, Item-Grid, Suche, Details | FR-01–06, FR-10–13, FR-20–21 |
 | M2 | Wiedergabe-Kern: Streaming, Player, Kapitel, Sync, Hintergrund | FR-30–41 |
-| M3 | Mini-Player, Einstellungen, VR-Feinschliff | FR-50–53, FR-60, NFR-01, NFR-06 |
+| M3 | Mini-Player, Einstellungen, VR-Feinschliff | FR-50–53, FR-60, FR-61, NFR-01, NFR-06 |
 | **M4** | **MVP-Release (Sideload-APK)** | Abnahme auf Quest 2 |
 | M5 | Spikes S-4/S-5, `ShelfConfig`-Verwaltung, „Raum einrichten“ im Hauptfenster | ADR-003, §9.4 |
 | M6 | Regalfenster | R-01–R-08 |
@@ -433,12 +436,12 @@ data class ShelfConfig(
 1. **Distribution:** nur Sideload, Open Source (GitHub/SideQuest) oder Horizon Store? Beeinflusst Login-Anforderungen (RI-12), Lizenzwahl und Branding. *Vor M4.*
 2. **App-Name & Package-ID** (Arbeitstitel „ShelfVR“). *Vor M0.*
 3. **Lizenz** des eigenen Projekts (z. B. MIT oder GPL). *Vor M0, falls Open Source.*
-4. **Design-Sprache:** Horizon OS UI Set oder Material 3 mit eigenem Theme. *Nach S-1.*
-5. **Mini-Player-Variante** (§7.6). *Nach S-2.*
-6. **Mini-Player und Playerfenster zusammenlegen?** Eine Activity mit kompaktem und Plattenspieler-Layout wäre weniger Code; getrennt bleibt der Mini-Player schlank. *Nach S-2.*
+4. ~~**Design-Sprache**~~ ✅ *Entschieden (Rev. 3):* Material 3 mit eigenem dunklem Theme.
+5. ~~**Mini-Player-Variante**~~ ✅ *Entschieden (Rev. 3):* System-Mediensteuerung zuerst, Fenster (Variante A) später (§7.6).
+6. **Mini-Player und Playerfenster zusammenlegen?** Eine Activity mit kompaktem und Plattenspieler-Layout wäre weniger Code; getrennt bleibt der Mini-Player schlank. *Vertagt auf M7, weil das Mini-Player-Fenster nachrangig ist.*
 7. **Mehrere Regale pro Bibliothek:** fortlaufende Seiten oder unabhängig (R-04)? Und angesichts der Anker-Grenze: lieber wenige große Regale? *Vor M6.*
 8. **Regal-Optik:** Holzton, Design-Stil, Plattenformat (quadratisch vs. Buchrücken). *Vor M6.*
-9. **Ziel-ABS-Version** von Lorenz' Server (für Fixtures und Tests). *Vor M1.*
+9. ~~**Ziel-ABS-Version**~~ ✅ *Entschieden (Rev. 3):* 2.37.1, identisch mit dem lokalen Testserver.
 
 ---
 
