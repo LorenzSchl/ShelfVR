@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <application
+        android:name=".ShelfVrApplication"
+        android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.ShelfVR">
+
+        <!-- Horizon OS übernimmt die Default-Größe aus <layout> (PROJECT_SPEC.md §5.3).
+             configChanges: Größenänderung des Panels soll die Activity nicht neu erzeugen. -->
+        <activity
+            android:name=".MainActivity"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation|density|keyboard|keyboardHidden|navigation"
+            android:exported="true"
+            android:resizeableActivity="true">
+            <layout
+                android:defaultWidth="1024dp"
+                android:defaultHeight="640dp" />
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Eigene Task-Affinität: Der Mini-Player ist ein eigenes Panel (Variante A, §7.6). -->
+        <activity
+            android:name=".MiniPlayerActivity"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation|density|keyboard|keyboardHidden|navigation"
+            android:exported="false"
+            android:resizeableActivity="true"
+            android:taskAffinity="de.lorenzschl.shelfvr.miniplayer">
+            <layout
+                android:defaultWidth="640dp"
+                android:defaultHeight="120dp"
+                android:minWidth="320dp"
+                android:minHeight="96dp" />
+        </activity>
+    </application>
+</manifest>
