@@ -27,6 +27,7 @@ import de.lorenzschl.shelfvr.core.network.dto.PlaybackSessionDto
 import de.lorenzschl.shelfvr.core.network.dto.SyncRequest
 import de.lorenzschl.shelfvr.core.network.origin
 import de.lorenzschl.shelfvr.core.network.resolveServerPath
+import de.lorenzschl.shelfvr.domain.AccountRepository
 import de.lorenzschl.shelfvr.domain.TrackPosition
 import de.lorenzschl.shelfvr.domain.TrackTimeline
 import de.lorenzschl.shelfvr.playback.PlaybackClient
@@ -35,6 +36,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -62,6 +64,7 @@ class S3ViewModel @Inject constructor(
     private val tokenStore: TokenStore,
     private val cleartextPolicy: CleartextPolicy,
     private val httpClient: OkHttpClient,
+    private val accountRepository: AccountRepository,
 ) : ViewModel() {
 
     private val state = MutableStateFlow(S3UiState())
@@ -74,6 +77,29 @@ class S3ViewModel @Inject constructor(
     private var syncJob: Job? = null
 
     private class ActiveSession(val dto: PlaybackSessionDto, val timeline: TrackTimeline)
+
+    init {
+        // Gespeicherte Sitzung (#5) wiederherstellen, sonst URL und Benutzer vorbelegen.
+        viewModelScope.launch {
+            tokenStore.awaitRestored()
+            val stored = tokenStore.session.value
+            val account = accountRepository.activeAccount.first()
+            state.update {
+                it.copy(
+                    serverUrl = stored?.serverUrl?.toString() ?: account?.server?.url ?: it.serverUrl,
+                    username = stored?.username ?: account?.account?.username ?: it.username,
+                )
+            }
+            if (stored != null) {
+                state.update { it.copy(busy = true, status = "Gespeicherte Sitzung wird geladen …") }
+                try {
+                    loadLibrary(AbsClientFactory.createApi(stored.serverUrl, httpClient), stored.serverUrl, stored.username, account?.account?.defaultLibraryId)
+                } catch (e: Exception) {
+                    state.update { it.copy(busy = false, status = null, error = describe(e)) }
+                }
+            }
+        }
+    }
 
     fun onServerUrlChange(value: String) = state.update { it.copy(serverUrl = value) }
     fun onUsernameChange(value: String) = state.update { it.copy(username = value) }
@@ -98,34 +124,43 @@ class S3ViewModel @Inject constructor(
                     return@launch
                 }
                 tokenStore.update(AbsSession(url, login.user.username, access, refresh))
-                api = client
-                serverUrl = url
-
-                val version = client.authorize().serverSettings?.version
-                val books = client.libraries().libraries.filter { it.mediaType == "book" }
-                val library = books.firstOrNull { it.id == login.userDefaultLibraryId } ?: books.firstOrNull()
-                val items = library?.let {
-                    client.libraryItems(it.id, limit = 50, sort = "media.metadata.title").results
-                }.orEmpty()
-                state.update {
-                    it.copy(
-                        busy = false,
-                        password = "",
-                        status = "Angemeldet als ${login.user.username} · ABS ${version ?: "?"} · " +
-                            (library?.name ?: "keine Buch-Bibliothek"),
-                        items = items.map { item ->
-                            S3Item(
-                                id = item.id,
-                                title = item.media.metadata.title ?: item.id,
-                                author = item.media.metadata.authorName,
-                                tracks = item.media.numTracks,
-                            )
-                        },
-                    )
-                }
+                accountRepository.saveLogin(
+                    serverUrl = url.toString(),
+                    serverVersion = login.serverSettings?.version,
+                    userId = login.user.id,
+                    username = login.user.username,
+                    defaultLibraryId = login.userDefaultLibraryId,
+                )
+                state.update { it.copy(password = "") }
+                loadLibrary(client, url, login.user.username, login.userDefaultLibraryId)
             } catch (e: Exception) {
                 state.update { it.copy(busy = false, status = null, error = describe(e)) }
             }
+        }
+    }
+
+    private suspend fun loadLibrary(client: AbsApi, url: HttpUrl, username: String, defaultLibraryId: String?) {
+        api = client
+        serverUrl = url
+        val version = client.authorize().serverSettings?.version
+        val books = client.libraries().libraries.filter { it.mediaType == "book" }
+        val library = books.firstOrNull { it.id == defaultLibraryId } ?: books.firstOrNull()
+        val items = library?.let {
+            client.libraryItems(it.id, limit = 50, sort = "media.metadata.title").results
+        }.orEmpty()
+        state.update {
+            it.copy(
+                busy = false,
+                status = "Angemeldet als $username · ABS ${version ?: "?"} · " + (library?.name ?: "keine Buch-Bibliothek"),
+                items = items.map { item ->
+                    S3Item(
+                        id = item.id,
+                        title = item.media.metadata.title ?: item.id,
+                        author = item.media.metadata.authorName,
+                        tracks = item.media.numTracks,
+                    )
+                },
+            )
         }
     }
 

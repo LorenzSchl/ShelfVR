@@ -54,6 +54,10 @@ sofern eine betroffen ist.
   `de.lorenzschl.shelfvr.core.network`).
 - SDK-Level stehen im Version Catalog: compileSdk 37 (von der Compose-BOM verlangt),
   targetSdk 34 (Android-Basis von Horizon OS), minSdk 32.
+- Persistenz: Room in `:core:database` (Schemas versioniert unter `core/database/schemas/`;
+  jede Schemaänderung = neue Version + Migration + Test in `MigrationTest`, nie destruktiv),
+  Einstellungen und HTTP-Zustimmungen per DataStore in `:core:datastore`, Tokens verschlüsselt
+  (Tink + Android Keystore) in `:data`. Hilt-Module liegen im jeweiligen Modul.
 - `app/src/main/kotlin/…/spike/` ist Wegwerf-Code für Phase 0 (Spikes S-1 bis S-3),
   ohne String-Ressourcen. Nach Abschluss der Spikes entfernen, nicht ausbauen.
 

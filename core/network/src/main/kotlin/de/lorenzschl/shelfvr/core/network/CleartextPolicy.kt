@@ -12,6 +12,7 @@ import java.util.concurrent.ConcurrentHashMap
  * (Schema + Host + Port). Die Android-Plattform erlaubt Cleartext, die App setzt die Regel selbst durch.
  */
 interface CleartextPolicy {
+    /** Darf kurz blockieren, bis die gespeicherten Zustimmungen geladen sind. */
     fun isAllowed(origin: String): Boolean
     fun allow(origin: String)
     fun revoke(origin: String)

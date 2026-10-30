@@ -25,6 +25,7 @@ dependencies {
     implementation(project(":core:designsystem"))
     implementation(project(":core:network"))
     implementation(project(":domain"))
+    implementation(project(":data"))
     implementation(project(":playback"))
     implementation(project(":feature:miniplayer"))
 

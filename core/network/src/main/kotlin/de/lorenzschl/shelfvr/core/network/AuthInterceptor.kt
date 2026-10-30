@@ -1,5 +1,6 @@
 package de.lorenzschl.shelfvr.core.network
 
+import kotlinx.coroutines.runBlocking
 import okhttp3.HttpUrl
 import okhttp3.Interceptor
 import okhttp3.Response
@@ -15,6 +16,8 @@ class AuthInterceptor(private val tokenStore: TokenStore) : Interceptor {
 
     override fun intercept(chain: Interceptor.Chain): Response {
         val request = chain.request()
+        // Läuft auf einem OkHttp-Thread; blockiert nur bis zum ersten Laden nach App-Start.
+        runBlocking { tokenStore.awaitRestored() }
         val session = tokenStore.session.value
         if (session == null ||
             request.header(HEADER_AUTHORIZATION) != null ||

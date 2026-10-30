@@ -16,6 +16,10 @@ compose-bom = "2026.09.00"
 media3 = "1.11.1"
 
 coroutines = "1.11.0"
+room = "2.8.5"
+datastore = "1.2.1"
+tink = "1.23.0"
+androidx-test-core = "1.7.0"
 serialization = "1.11.0"
 okhttp = "5.5.0"
 retrofit = "3.0.0"
@@ -46,6 +50,13 @@ media3-datasource-okhttp = { module = "androidx.media3:media3-datasource-okhttp"
 
 hilt-android = { module = "com.google.dagger:hilt-android", version.ref = "hilt" }
 hilt-compiler = { module = "com.google.dagger:hilt-android-compiler", version.ref = "hilt" }
+
+room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
+room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
+room-testing = { module = "androidx.room:room-testing", version.ref = "room" }
+datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastore" }
+tink-android = { module = "com.google.crypto.tink:tink-android", version.ref = "tink" }
+androidx-test-core = { module = "androidx.test:core", version.ref = "androidx-test-core" }
 
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
@@ -81,6 +92,7 @@ kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", versi
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
 roborazzi = { id = "io.github.takahirom.roborazzi", version.ref = "roborazzi" }
+room = { id = "androidx.room", version.ref = "room" }
 
 # Convention-Plugins aus build-logic
 shelfvr-android-application = { id = "shelfvr.android.application" }
