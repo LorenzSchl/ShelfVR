@@ -155,3 +155,23 @@ Die Designsprache passt erstmal so!
      im Speicher liegt.
 - **Erwartet:** HTTP funktioniert nur nach Bestätigung, HTTPS unverändert.
 - **Ergebnis:**
+
+## MT-07 · Persistenz: Anmeldung und HTTP-Zustimmung überstehen einen Neustart (#5)
+
+- **Status:** offen
+- **Commit:** 8c398c4
+- **Schritte:**
+  1. APK aus dem CI-Lauf dieses PRs installieren. Die Installation muss ein Update sein, damit die
+     Daten erhalten bleiben. Ist ein Deinstallieren nötig, ab Schritt 2 trotzdem weitermachen.
+  2. S-3: Mit der HTTPS-Domain anmelden. Die Bücherliste erscheint.
+  3. App vollständig beenden (Fenster schließen, in den App-Einstellungen „Beenden erzwingen“) und
+     neu starten.
+  4. Erwartet: Ohne Passworteingabe steht „Gespeicherte Sitzung wird geladen …“, danach erscheinen
+     Statuszeile und Bücher. Ein Buch abspielen und den Sync prüfen.
+  5. Nur wenn MT-06 möglich ist: Mit `http://<IP>:<Port>` anmelden und den Warnhinweis bestätigen.
+     App neu starten, abmelden ist im Spike nicht möglich. Erneut mit derselben HTTP-Adresse anmelden:
+     Der Warnhinweis darf **nicht** mehr erscheinen.
+  6. Quest neu starten, App öffnen: Die Sitzung ist weiterhin da.
+- **Erwartet:** Anmeldung und HTTP-Zustimmung überstehen App- und Geräteneustart. Keine
+  Abstürze beim Start, auch nicht ohne WLAN (dann Fehlermeldung statt Liste).
+- **Ergebnis:**
