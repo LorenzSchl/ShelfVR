@@ -24,8 +24,8 @@ PR schreiben. Status: `offen` → `ok` / `nicht ok` / `erledigt`.
 - **Erwartet:** Ein Fenster „ShelfVR · Spikes Phase 0“ öffnet sich; die Zeile „Dieses Fenster“
   zeigt etwa 1024 × 640 dp.
 - **Ergebnis:**
-  - Horizon OS Quest 2: ___ · Quest 3: ___ (kommt als Mindestversion ins README)
-  - Angezeigte Fenstergröße: ___
+  - Horizon OS Quest 2: 2.9 · Quest 3: NICHT VORHANDEN (kommt als Mindestversion ins README)
+  - Angezeigte Fenstergröße: 1280 x 800 dp
 
 ## MT-01 · Spike S-1: Hintergrund-Audio und System-Mediensteuerung
 
@@ -52,6 +52,11 @@ PR schreiben. Status: `offen` → `ok` / `nicht ok` / `erledigt`.
   bleiben oder auf das Horizon OS UI Set wechseln? Eindruck von Lesbarkeit und Kontrast auf dem
   Quest-2-Display.
 - **Ergebnis:**
+In dem Hauptfenster funktionieren -15s, +30s und Pause und Play. Die Tonspur wird korrekt abgespielt und der Fortschritt angezeigt. Der Ton wird auch weiter ausgegeben, wenn das ShelfVR Fenster geschlossen ist.
+Über das Pop-UPd das nach dem Minimieren kommt kann der Ton nicht kontrolliert werden. Benachrichtigen erlauben Button scheint nichts zu machen. Nach dem Absetzen der Brille läuft der Ton weiter, auch nach > 2 Minuten ist hier nichts verändert. Ggf. liegt das am ADB über TCP?
+Bisher nur mit Controller getestet, Handtracking vorerst ignoriert.
+Der Ton kommt aus der Richtung des Fensters und "bewegt" sich, wenn das Fenster verschoben wird.
+Die Designsprache passt erstmal so!
 
 ## MT-02 · Spike S-2: Mehrere Fenster und Mini-Player
 
@@ -78,7 +83,12 @@ PR schreiben. Status: `offen` → `ok` / `nicht ok` / `erledigt`.
   Mini-Player und späteres Playerfenster eine gemeinsame Activity werden. Screenshots oder ein
   kurzes Video im PR helfen.
 - **Ergebnis:**
-  - Kleinste Mini-Player-Größe: ___ × ___ dp
+  - Initiale Mini-Player-Größe: 800 x 150 dp
+  - Kleinste Mini-Player-Größe: 800 × 150 dp (Beim Versuch den Player kleiner zu machen wurde er Größer)
+  - Wenn man den Hauptplayer Schließt öffnet sich ein zweiter Mini Player. Beide können korrekt steuern und zeigen den Fortschritt an.
+  - Beim mehrfachen drücken auf Miniplayer daneben öffnen öffnen sich mehrere miniplayer.
+  - Die Miniplayer bleiben bestehen, wenn andere Fenster geöffnet werden. GGf. werden sie in den Hintergrund gedrängt, wenn zu viele Fenster offen sind.
+  - ERKENNTNIS: Wenn wir das System-Overlay zur Mediensteuerung funktional bekommen brauchen wir den Mini Player erstmal nicht. Kann man das ggf. erweitern oder konfigurieren=
 
 ## MT-03 · Spike S-3: Login, Streaming und Sync gegen deinen ABS-Server
 
@@ -107,7 +117,12 @@ PR schreiben. Status: `offen` → `ok` / `nicht ok` / `erledigt`.
 - **Erwartet:** Das Multi-Track-Buch streamt, und der Sync kommt im ABS-Web-UI an
   (Erfolgskriterium S-3).
 - **Ergebnis:**
-  - ABS-Version deines Servers (§13 Punkt 9): ___
+  - http ist gesperrt: Das sollte nicht so sein!
+  - Anmelden mit HTTPS klappt
+  - ABS-Version deines Servers (§13 Punkt 9): 2.37.1
+  - anklicken eines buches mit mehreren audiodateien klappt. Anzahl der Dateien wird angezeigt.
+  - Springen, Stoppen und Sync klappt
+  
 
 ## MT-04 · Zu erledigen (keine Tests)
 
@@ -119,3 +134,5 @@ PR schreiben. Status: `offen` → `ok` / `nicht ok` / `erledigt`.
   2. Prüfen, dass der CI-Lauf im PR grün ist und das APK-Artefakt herunterladbar ist.
   3. Optional: Branch-Schutz für `main` einrichten (PR + grüne CI vor dem Merge).
 - **Ergebnis:**
+- is mir egal.
+- ci ist grün, apk lief auf der quest :)
